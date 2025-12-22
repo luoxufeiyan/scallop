@@ -84,7 +84,7 @@ func (m *Manager) createDefaultConfig() error {
 			{Addr: "2001:4860:4860::8888", Description: "Google DNS IPv6", HideAddr: false},
 			{Addr: "github.com", Description: "GitHub", HideAddr: false, DNSServer: "8.8.8.8"},
 		},
-		PingInterval: 10,
+		PingInterval: 300,
 		PingCount:    4,
 		WebPort:      8081,
 		DefaultDNS:   "",
