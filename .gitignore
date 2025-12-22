@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-scallop
 scallop-*
 ping-monitor
 
