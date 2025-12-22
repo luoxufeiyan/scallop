@@ -1,6 +1,6 @@
 # Scallop 交叉编译 PowerShell 脚本
 param(
-    [string]$Version = "v1.0.0",
+    [string]$Version = "v1.0.1",
     [switch]$Clean,
     [switch]$SkipPackaging,
     [string[]]$Platforms = @()

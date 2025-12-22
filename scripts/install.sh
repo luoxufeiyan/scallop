@@ -120,6 +120,58 @@ install_binary() {
     rm -f "${binary_path}"
 }
 
+# 设置 ping 权限
+setup_ping_permissions() {
+    info "配置 ping 命令权限"
+    
+    # 检查并设置 /bin/ping 权限
+    if [ -f /bin/ping ]; then
+        info "设置 /bin/ping 权限"
+        # 先尝试使用 capabilities
+        if command -v setcap &> /dev/null; then
+            setcap cap_net_raw+p /bin/ping 2>/dev/null && info "已设置 /bin/ping capabilities" || {
+                warn "无法设置 capabilities，尝试设置 setuid"
+                chmod u+s /bin/ping
+            }
+        else
+            warn "setcap 命令不存在，设置 setuid 权限"
+            chmod u+s /bin/ping
+        fi
+    fi
+    
+    # 检查并设置 /usr/bin/ping 权限（某些系统 ping 在这里）
+    if [ -f /usr/bin/ping ]; then
+        info "设置 /usr/bin/ping 权限"
+        if command -v setcap &> /dev/null; then
+            setcap cap_net_raw+p /usr/bin/ping 2>/dev/null && info "已设置 /usr/bin/ping capabilities" || {
+                warn "无法设置 capabilities，尝试设置 setuid"
+                chmod u+s /usr/bin/ping
+            }
+        else
+            chmod u+s /usr/bin/ping
+        fi
+    fi
+    
+    # 检查并设置 ping6 权限
+    if [ -f /bin/ping6 ]; then
+        info "设置 /bin/ping6 权限"
+        if command -v setcap &> /dev/null; then
+            setcap cap_net_raw+p /bin/ping6 2>/dev/null || chmod u+s /bin/ping6
+        else
+            chmod u+s /bin/ping6
+        fi
+    fi
+    
+    if [ -f /usr/bin/ping6 ]; then
+        info "设置 /usr/bin/ping6 权限"
+        if command -v setcap &> /dev/null; then
+            setcap cap_net_raw+p /usr/bin/ping6 2>/dev/null || chmod u+s /usr/bin/ping6
+        else
+            chmod u+s /usr/bin/ping6
+        fi
+    fi
+}
+
 # 创建默认配置文件
 create_config() {
     local config_file="${CONFIG_DIR}/config.json"
@@ -181,7 +233,8 @@ Restart=on-failure
 RestartSec=5s
 
 # 安全设置
-NoNewPrivileges=true
+# 注意: NoNewPrivileges 会阻止 ping 命令使用 capabilities，所以必须注释掉
+# NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
@@ -214,11 +267,19 @@ start_service() {
     systemctl start "${SERVICE_NAME}"
     
     # 等待服务启动
-    sleep 2
+    sleep 3
     
     # 检查服务状态
     if systemctl is-active --quiet "${SERVICE_NAME}"; then
         info "服务启动成功！"
+        
+        # 测试 ping 权限
+        info "测试 ping 权限..."
+        if sudo -u "${SERVICE_USER}" ping -c 1 8.8.8.8 &>/dev/null; then
+            info "Ping 测试成功！"
+        else
+            warn "Ping 测试失败，请检查日志: journalctl -u ${SERVICE_NAME} -n 50"
+        fi
     else
         error "服务启动失败，请检查日志: journalctl -u ${SERVICE_NAME} -n 50"
     fi
@@ -245,6 +306,14 @@ show_info() {
     echo "  查看日志: journalctl -u ${SERVICE_NAME} -f"
     echo "  编辑配置: nano ${CONFIG_DIR}/config.json"
     echo ""
+    echo "故障排查:"
+    echo "  如果 ping 不工作，请检查:"
+    echo "  1. 查看服务日志: journalctl -u ${SERVICE_NAME} -n 50"
+    echo "  2. 测试 ping 权限: sudo -u ${SERVICE_USER} ping -c 1 8.8.8.8"
+    echo "  3. 检查 ping 权限: ls -l /bin/ping && getcap /bin/ping"
+    echo "  4. 手动设置权限: sudo setcap cap_net_raw+p /bin/ping"
+    echo "  5. 或使用 setuid: sudo chmod u+s /bin/ping"
+    echo ""
     echo "修改配置后需要重启服务: systemctl restart ${SERVICE_NAME}"
     echo ""
 }
@@ -263,6 +332,7 @@ main() {
     # 安装
     setup_environment
     install_binary "$binary_path"
+    setup_ping_permissions
     create_config
     set_permissions
     create_systemd_service

@@ -92,8 +92,9 @@ func singlePing(addr string) (float64, bool) {
 		}
 	}
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Printf("Ping失败 %s: %v, 输出: %s\n", addr, err, string(output))
 		return 0, false
 	}
 

@@ -208,10 +208,5 @@ A: 修改配置文件中的 `web_port`
 **Q: 如何卸载？**  
 A: 
 ```bash
-sudo systemctl stop scallop
-sudo systemctl disable scallop
-sudo rm /etc/systemd/system/scallop.service
-sudo rm /usr/local/bin/scallop
-sudo rm -rf /etc/scallop /var/lib/scallop
-sudo userdel scallop
+curl -fsSL https://raw.githubusercontent.com/luoxufeiyan/scallop/master/scripts/uninstall.sh | sudo bash
 ```
