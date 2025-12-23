@@ -82,8 +82,10 @@ async function loadTargets() {
         
         targets.forEach(target => {
             const option = document.createElement('option');
-            option.value = target.addr;
-            option.textContent = `${target.description} (${target.addr})`;
+            option.value = target.id; // 使用target_id而不是addr
+            // 隐藏地址显示为 ***
+            const displayAddr = target.hide_addr ? '***' : target.addr;
+            option.textContent = `${target.description} (${displayAddr})`;
             select.appendChild(option);
         });
         
@@ -92,7 +94,7 @@ async function loadTargets() {
         
         // 默认选择第一个目标
         if (targets.length > 0) {
-            select.value = targets[0].addr;
+            select.value = targets[0].id;
             loadSingleChartData();
         }
     } catch (error) {
@@ -110,12 +112,14 @@ function generateTargetCheckboxes() {
         checkboxDiv.className = 'target-checkbox';
         
         const color = chartColors[index % chartColors.length];
+        // 隐藏地址显示为 ***
+        const displayAddr = target.hide_addr ? '***' : target.addr;
         
         checkboxDiv.innerHTML = `
             <label class="form-check-label">
                 <input type="checkbox" class="form-check-input target-checkbox-input" 
-                       value="${target.addr}" data-index="${index}">
-                <span>${target.description} (${target.addr})</span>
+                       value="${target.id}" data-index="${index}">
+                <span>${target.description} (<span class="${target.hide_addr ? 'hidden-addr' : ''}">${displayAddr}</span>)</span>
                 <div class="target-color-indicator" style="background-color: ${color}"></div>
             </label>
         `;
@@ -152,9 +156,9 @@ function deselectAllTargets() {
 function getSelectedTargets() {
     const checkboxes = document.querySelectorAll('.target-checkbox-input:checked');
     return Array.from(checkboxes).map(checkbox => ({
-        addr: checkbox.value,
+        id: checkbox.value, // 使用target_id
         index: parseInt(checkbox.dataset.index),
-        target: targets.find(t => t.addr === checkbox.value)
+        target: targets.find(t => t.id === checkbox.value)
     }));
 }
 
@@ -186,12 +190,17 @@ function createStatusCard(status) {
     const latencyText = status.success ? `${status.latency.toFixed(2)}ms` : 'N/A';
     const timeText = new Date(status.timestamp).toLocaleString('zh-CN');
     
+    // 处理地址显示（隐藏地址显示为***加雾化效果）
+    const addrDisplay = status.hide_addr ? 
+        `<small class="text-muted hidden-addr">***</small><br>` : 
+        (status.addr ? `<small class="text-muted">${status.addr}</small><br>` : '');
+    
     col.innerHTML = `
         <div class="card status-card ${statusClass}">
             <div class="card-body">
                 <h6 class="card-title">${status.description}</h6>
                 <p class="card-text">
-                    <small class="text-muted">${status.addr}</small><br>
+                    ${addrDisplay}
                     <span class="badge ${status.success ? 'bg-success' : 'bg-danger'}">${statusText}</span>
                     <span class="ms-2">${latencyText}</span><br>
                     <small class="text-muted">${timeText}</small>
@@ -257,10 +266,10 @@ function initChart() {
 
 // 加载单个目标图表数据
 async function loadSingleChartData() {
-    const addr = document.getElementById('target-select').value;
+    const targetId = document.getElementById('target-select').value;
     const hours = document.getElementById('time-range').value;
     
-    if (!addr) {
+    if (!targetId) {
         // 清空图表
         chart.data.labels = [];
         chart.data.datasets = [];
@@ -270,12 +279,13 @@ async function loadSingleChartData() {
     }
     
     try {
-        const response = await fetch(`/api/ping-data?addr=${encodeURIComponent(addr)}&hours=${hours}`);
+        const response = await fetch(`/api/ping-data?target_id=${encodeURIComponent(targetId)}&hours=${hours}`);
         const data = await response.json();
         
         // 找到目标描述
-        const target = targets.find(t => t.addr === addr);
-        const description = target ? target.description : addr;
+        const target = targets.find(t => t.id === targetId);
+        const description = target ? target.description : targetId;
+        const displayAddr = target && target.addr && !target.hide_addr ? target.addr : '';
         
         // 处理数据
         const labels = [];
@@ -304,7 +314,9 @@ async function loadSingleChartData() {
             pointRadius: 3,
             pointHoverRadius: 5
         }];
-        chart.options.plugins.title.text = `${description} (${addr}) - Ping 延迟趋势`;
+        
+        const titleAddr = displayAddr ? ` (${displayAddr})` : '';
+        chart.options.plugins.title.text = `${description}${titleAddr} - Ping 延迟趋势`;
         chart.update();
         
     } catch (error) {
@@ -329,7 +341,7 @@ async function loadMultiChartData() {
     try {
         // 并行获取所有选中目标的数据
         const dataPromises = selectedTargets.map(async (selected) => {
-            const response = await fetch(`/api/ping-data?addr=${encodeURIComponent(selected.addr)}&hours=${hours}`);
+            const response = await fetch(`/api/ping-data?target_id=${encodeURIComponent(selected.id)}&hours=${hours}`);
             const data = await response.json();
             return {
                 ...selected,
@@ -363,8 +375,12 @@ async function loadMultiChartData() {
                 return dataPoint && dataPoint.success ? dataPoint.latency : null;
             });
             
+            // 隐藏地址显示为 ***
+            const displayAddr = targetData.target.addr && !targetData.target.hide_addr ? 
+                ` (${targetData.target.addr})` : (targetData.target.hide_addr ? ' (***)' : '');
+            
             return {
-                label: `${targetData.target.description} (${targetData.target.addr})`,
+                label: `${targetData.target.description}${displayAddr}`,
                 data: dataPoints,
                 borderColor: color,
                 backgroundColor: color + '20',

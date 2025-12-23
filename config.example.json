@@ -1,170 +1,38 @@
 {
   "targets": [
     {
-      "addr": "61.139.2.69",
-      "description": "成都电信"
+      "addr": "8.8.8.8",
+      "description": "Google DNS",
+      "hide_addr": false
     },
     {
-      "addr": "220.181.12.199",
-      "description": "北京电信"
+      "addr": "114.114.114.114",
+      "description": "114 DNS",
+      "hide_addr": false
     },
     {
-      "addr": "150.138.131.205",
-      "description": "青岛电信"
+      "addr": "1.1.1.1",
+      "description": "Cloudflare DNS",
+      "hide_addr": false
     },
     {
-      "addr": "202.96.209.133",
-      "description": "上海电信"
+      "addr": "2001:4860:4860::8888",
+      "description": "Google DNS IPv6",
+      "hide_addr": false
     },
     {
-      "addr": "202.96.128.166",
-      "description": "广州电信"
+      "addr": "github.com",
+      "description": "GitHub",
+      "hide_addr": false,
+      "dns_server": "8.8.8.8"
     },
     {
-      "addr": "61.132.163.68",
-      "description": "合肥电信"
-    },
-    {
-      "addr": "218.85.152.99",
-      "description": "厦门电信"
-    },
-    {
-      "addr": "202.98.192.67",
-      "description": "贵阳电信"
-    },
-    {
-      "addr": "222.88.88.88",
-      "description": "洛阳电信"
-    },
-    {
-      "addr": "219.147.198.230",
-      "description": "哈尔滨电信"
-    },
-    {
-      "addr": "218.2.2.2",
-      "description": "南京电信"
-    },
-    {
-      "addr": "202.101.224.69",
-      "description": "南昌电信"
-    },
-    {
-      "addr": "219.150.32.132",
-      "description": "天津电信"
-    },
-    {
-      "addr": "222.172.200.68",
-      "description": "昆明电信"
-    },
-    {
-      "addr": "221.5.203.98",
-      "description": "重庆联通"
-    },
-    {
-      "addr": "119.6.6.6",
-      "description": "成都联通"
-    },
-    {
-      "addr": "111.201.101.156",
-      "description": "北京联通"
-    },
-    {
-      "addr": "210.21.196.6",
-      "description": "深圳联通"
-    },
-    {
-      "addr": "202.99.160.68",
-      "description": "河北联通"
-    },
-    {
-      "addr": "202.97.224.69",
-      "description": "哈尔滨联通"
-    },
-    {
-      "addr": "140.207.198.6",
-      "description": "上海联通"
-    },
-    {
-      "addr": "202.98.0.68",
-      "description": "长春联通"
-    },
-    {
-      "addr": "202.102.128.68",
-      "description": "青岛联通"
-    },
-    {
-      "addr": "120.80.88.88",
-      "description": "广州联通"
-    },
-    {
-      "addr": "221.12.1.227",
-      "description": "杭州联通"
-    },
-    {
-      "addr": "221.130.33.60",
-      "description": "北京移动"
-    },
-    {
-      "addr": "211.136.112.50",
-      "description": "上海移动"
-    },
-    {
-      "addr": "211.136.192.6",
-      "description": "广州移动"
-    },
-    {
-      "addr": "183.221.253.100",
-      "description": "成都移动"
-    },
-    {
-      "addr": "221.131.143.69",
-      "description": "南京移动"
-    },
-    {
-      "addr": "211.138.180.2",
-      "description": "合肥移动"
-    },
-    {
-      "addr": "218.201.96.130",
-      "description": "青岛移动"
-    },
-    {
-      "addr": "211.138.106.2",
-      "description": "太原移动"
-    },
-    {
-      "addr": "211.137.191.26",
-      "description": "济南移动"
-    },
-    {
-      "addr": "211.140.13.188",
-      "description": "杭州移动"
-    },
-    {
-      "addr": "211.141.90.68",
-      "description": "南昌移动"
-    },
-    {
-      "addr": "211.137.130.19",
-      "description": "西安移动"
-    },
-    {
-      "addr": "221.179.38.7",
-      "description": "海口移动"
-    },
-    {
-      "addr": "211.138.30.66",
-      "description": "郑州移动"
-    },
-    {
-      "addr": "218.201.4.3",
-      "description": "重庆移动"
-    },
-    {
-      "addr": "211.139.5.29",
-      "description": "贵州移动"
+      "addr": "example.com",
+      "description": "示例网站（隐藏地址）",
+      "hide_addr": true
     }
   ],
-  "ping_interval": 15,
-  "web_port": 8080
+  "ping_interval": 10,
+  "web_port": 8081,
+  "default_dns": ""
 }

@@ -57,6 +57,45 @@
             border-radius: 6px;
             padding: 15px;
         }
+        
+        /* 隐藏地址的雾化遮罩效果 */
+        .hidden-addr {
+            position: relative;
+            display: inline-block;
+            color: #6c757d;
+            letter-spacing: 2px;
+            font-weight: bold;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, rgba(108, 117, 125, 0.1) 0%, rgba(108, 117, 125, 0.05) 100%);
+            border-radius: 4px;
+            backdrop-filter: blur(2px);
+            text-shadow: 0 0 8px rgba(108, 117, 125, 0.3);
+        }
+        
+        .hidden-addr::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+            border-radius: 4px;
+            pointer-events: none;
+        }
+        
+        .hidden-addr::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(108, 117, 125, 0.15) 0%, transparent 60%);
+            filter: blur(4px);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
