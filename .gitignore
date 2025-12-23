@@ -1,0 +1,20 @@
+# 二进制文件
+*.exe
+scallop
+ping-monitor
+
+# 数据库文件
+*.db
+
+# 配置文件（保留示例文件）
+config.json
+
+# Go相关
+vendor/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
