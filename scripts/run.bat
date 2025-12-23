@@ -16,6 +16,6 @@ if %errorlevel% neq 0 (
 
 echo 启动监控程序...
 echo Web界面将在 http://localhost:8081 启动
-go run main.go
+go run cmd/scallop/main.go
 
 pause

@@ -13,8 +13,8 @@ echo 编译版本: %VERSION%
 echo.
 
 REM 创建构建目录
-if not exist "dist" mkdir dist
-cd dist
+if not exist "artifacts" mkdir artifacts
+cd artifacts
 
 REM 清理旧文件
 if exist "*.exe" del /q *.exe
@@ -28,7 +28,7 @@ REM Windows 64位
 echo [1/8] 编译 Windows 64位...
 set GOOS=windows
 set GOARCH=amd64
-go build -ldflags "-s -w" -o scallop-windows-amd64.exe ../main.go
+go build -ldflags "-s -w" -o scallop-windows-amd64.exe ../cmd/scallop/main.go
 if %errorlevel% neq 0 (
     echo 编译失败: Windows 64位
     goto :error
@@ -38,7 +38,7 @@ REM Windows 32位
 echo [2/8] 编译 Windows 32位...
 set GOOS=windows
 set GOARCH=386
-go build -ldflags "-s -w" -o scallop-windows-386.exe ../main.go
+go build -ldflags "-s -w" -o scallop-windows-386.exe ../cmd/scallop/main.go
 if %errorlevel% neq 0 (
     echo 编译失败: Windows 32位
     goto :error
@@ -48,7 +48,7 @@ REM Linux 64位
 echo [3/8] 编译 Linux 64位...
 set GOOS=linux
 set GOARCH=amd64
-go build -ldflags "-s -w" -o scallop-linux-amd64 ../main.go
+go build -ldflags "-s -w" -o scallop-linux-amd64 ../cmd/scallop/main.go
 if %errorlevel% neq 0 (
     echo 编译失败: Linux 64位
     goto :error
@@ -58,7 +58,7 @@ REM Linux 32位
 echo [4/8] 编译 Linux 32位...
 set GOOS=linux
 set GOARCH=386
-go build -ldflags "-s -w" -o scallop-linux-386 ../main.go
+go build -ldflags "-s -w" -o scallop-linux-386 ../cmd/scallop/main.go
 if %errorlevel% neq 0 (
     echo 编译失败: Linux 32位
     goto :error
@@ -68,7 +68,7 @@ REM Linux ARM64
 echo [5/8] 编译 Linux ARM64...
 set GOOS=linux
 set GOARCH=arm64
-go build -ldflags "-s -w" -o scallop-linux-arm64 ../main.go
+go build -ldflags "-s -w" -o scallop-linux-arm64 ../cmd/scallop/main.go
 if %errorlevel% neq 0 (
     echo 编译失败: Linux ARM64
     goto :error
@@ -78,7 +78,7 @@ REM macOS 64位 (Intel)
 echo [6/8] 编译 macOS Intel...
 set GOOS=darwin
 set GOARCH=amd64
-go build -ldflags "-s -w" -o scallop-darwin-amd64 ../main.go
+go build -ldflags "-s -w" -o scallop-darwin-amd64 ../cmd/scallop/main.go
 if %errorlevel% neq 0 (
     echo 编译失败: macOS Intel
     goto :error
@@ -88,7 +88,7 @@ REM macOS ARM64 (Apple Silicon)
 echo [7/8] 编译 macOS Apple Silicon...
 set GOOS=darwin
 set GOARCH=arm64
-go build -ldflags "-s -w" -o scallop-darwin-arm64 ../main.go
+go build -ldflags "-s -w" -o scallop-darwin-arm64 ../cmd/scallop/main.go
 if %errorlevel% neq 0 (
     echo 编译失败: macOS Apple Silicon
     goto :error
@@ -98,7 +98,7 @@ REM FreeBSD 64位
 echo [8/8] 编译 FreeBSD 64位...
 set GOOS=freebsd
 set GOARCH=amd64
-go build -ldflags "-s -w" -o scallop-freebsd-amd64 ../main.go
+go build -ldflags "-s -w" -o scallop-freebsd-amd64 ../cmd/scallop/main.go
 if %errorlevel% neq 0 (
     echo 编译失败: FreeBSD 64位
     goto :error

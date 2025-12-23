@@ -12,8 +12,8 @@ echo "编译版本: $VERSION"
 echo
 
 # 创建构建目录
-mkdir -p dist
-cd dist
+mkdir -p artifacts
+cd artifacts
 
 # 清理旧文件
 rm -f scallop-* *.tar.gz *.zip
@@ -51,7 +51,7 @@ for target in "${targets[@]}"; do
     fi
     
     # 编译
-    env GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w" -o "$output" ../main.go
+    env GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w" -o "$output" ../cmd/scallop/main.go
     
     if [ $? -ne 0 ]; then
         echo "编译失败: $GOOS $GOARCH"

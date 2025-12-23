@@ -11,8 +11,8 @@ echo Building version: %VERSION%
 echo.
 
 REM Create dist directory
-if not exist "dist" mkdir dist
-cd dist
+if not exist "artifacts" mkdir artifacts
+cd artifacts
 
 REM Clean old files
 del /q scallop-* 2>nul
@@ -24,28 +24,28 @@ REM Windows 64-bit
 echo [1/4] Building Windows 64-bit...
 set GOOS=windows
 set GOARCH=amd64
-go build -ldflags="-s -w" -o scallop-windows-amd64.exe ../main.go
+go build -ldflags="-s -w" -o scallop-windows-amd64.exe ../cmd/scallop/main.go
 if %errorlevel% neq 0 goto :error
 
 REM Linux 64-bit
 echo [2/4] Building Linux 64-bit...
 set GOOS=linux
 set GOARCH=amd64
-go build -ldflags="-s -w" -o scallop-linux-amd64 ../main.go
+go build -ldflags="-s -w" -o scallop-linux-amd64 ../cmd/scallop/main.go
 if %errorlevel% neq 0 goto :error
 
 REM macOS Intel
 echo [3/4] Building macOS Intel...
 set GOOS=darwin
 set GOARCH=amd64
-go build -ldflags="-s -w" -o scallop-darwin-amd64 ../main.go
+go build -ldflags="-s -w" -o scallop-darwin-amd64 ../cmd/scallop/main.go
 if %errorlevel% neq 0 goto :error
 
 REM macOS Apple Silicon
 echo [4/4] Building macOS Apple Silicon...
 set GOOS=darwin
 set GOARCH=arm64
-go build -ldflags="-s -w" -o scallop-darwin-arm64 ../main.go
+go build -ldflags="-s -w" -o scallop-darwin-arm64 ../cmd/scallop/main.go
 if %errorlevel% neq 0 goto :error
 
 echo.

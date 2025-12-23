@@ -34,10 +34,10 @@ if ($Platforms.Count -gt 0) {
 }
 
 # Create build directory
-if (!(Test-Path "dist")) {
-    New-Item -ItemType Directory -Path "dist" | Out-Null
+if (!(Test-Path "artifacts")) {
+    New-Item -ItemType Directory -Path "artifacts" | Out-Null
 }
-Set-Location "dist"
+Set-Location "artifacts"
 
 # Clean old files
 if ($Clean -or (Test-Path "scallop-*")) {
@@ -74,23 +74,23 @@ foreach ($target in $targets) {
         $output += ".exe"
     }
     
-    # Build
-    $buildArgs = @(
-        "build",
-        "-ldflags", "-s -w",
-        "-o", $output,
-        "../main.go"
-    )
-    
-    $result = Start-Process -FilePath "go" -ArgumentList $buildArgs -Wait -PassThru -NoNewWindow
-    
-    if ($result.ExitCode -ne 0) {
+    # Build using direct command execution
+    try {
+        $result = & go build -ldflags="-s -w" -o $output ../cmd/scallop/main.go 2>&1
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Build failed: $($target.Name)" -ForegroundColor Red
+            Write-Host $result -ForegroundColor Red
+            $failed += $target.Name
+        } else {
+            $size = (Get-Item $output).Length
+            $sizeStr = if ($size -gt 1MB) { "{0:N1} MB" -f ($size / 1MB) } else { "{0:N0} KB" -f ($size / 1KB) }
+            Write-Host "Build successful: $output ($sizeStr)" -ForegroundColor Green
+        }
+    } catch {
         Write-Host "Build failed: $($target.Name)" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Red
         $failed += $target.Name
-    } else {
-        $size = (Get-Item $output).Length
-        $sizeStr = if ($size -gt 1MB) { "{0:N1} MB" -f ($size / 1MB) } else { "{0:N0} KB" -f ($size / 1KB) }
-        Write-Host "Build successful: $output ($sizeStr)" -ForegroundColor Green
     }
     
     $count++

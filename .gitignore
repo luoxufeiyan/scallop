@@ -1,20 +1,46 @@
-# 二进制文件
+# Binaries for programs and plugins
 *.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 scallop
+scallop-*
 ping-monitor
 
-# 数据库文件
-*.db
+# Test binary, built with `go test -c`
+*.test
 
-# 配置文件（保留示例文件）
-config.json
+# Output of the go coverage tool
+*.out
 
-# Go相关
+# Dependency directories
 vendor/
-*.log
+
+# Go workspace file
+go.work
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application
+config.json
+ping_data.db
+ping_data.db-shm
+ping_data.db-wal
+*.log
+
+# Build artifacts
+dist/
+build/
+artifacts/
+*.tar.gz
+*.zip
