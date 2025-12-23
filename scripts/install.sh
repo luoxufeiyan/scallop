@@ -22,15 +22,15 @@ WEB_PORT=8081
 
 # 打印信息
 info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "${GREEN}[INFO]${NC} $1" >&2
 }
 
 warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $1" >&2
 }
 
 error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
     exit 1
 }
 
@@ -60,10 +60,10 @@ detect_arch() {
 # 获取最新版本
 get_latest_version() {
     info "获取最新版本信息..."
-    local version=$(curl -s "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    local version=$(curl -s "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' 2>/dev/null)
     
     if [ -z "$version" ]; then
-        warn "无法获取最新版本，使用master分支的artifacts"
+        # 如果无法获取版本号，直接使用 latest 标签
         echo "latest"
     else
         echo "$version"
@@ -79,18 +79,13 @@ download_binary() {
     
     info "检测到系统架构: linux-${arch}"
     
-    if [ "$version" = "latest" ]; then
-        # 从artifacts下载
-        download_url="https://github.com/${GITHUB_REPO}/raw/master/artifacts/${binary_name}"
-        info "从artifacts下载: ${download_url}"
-    else
-        # 从release下载
-        download_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/${binary_name}"
-        info "下载版本 ${version}: ${download_url}"
-    fi
+    # 使用 latest 标签下载最新版本
+    download_url="https://github.com/${GITHUB_REPO}/releases/latest/download/${binary_name}"
+    info "下载最新版本"
+    info "下载地址: ${download_url}"
     
     # 下载文件
-    if ! curl -L -o "/tmp/${binary_name}" "${download_url}"; then
+    if ! curl -L -o "/tmp/${binary_name}" "${download_url}" 2>&1 | grep -v "^[[:space:]]*$" >&2; then
         error "下载失败，请检查网络连接或GitHub访问"
     fi
     
