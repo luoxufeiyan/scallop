@@ -1,72 +1,134 @@
+// 全局变量
 let chart = null;
 let targets = [];
-let currentMode = 'single'; // 'single' 或 'multi'
+let selectedTargets = new Set();
+let currentHours = 1;
+let config = {};
 
-// 预定义的颜色数组，用于多目标显示
+// 预定义的颜色数组
 const chartColors = [
-    'rgb(54, 162, 235)',   // 蓝色
-    'rgb(255, 99, 132)',   // 红色
-    'rgb(75, 192, 192)',   // 青色
-    'rgb(153, 102, 255)',  // 紫色
-    'rgb(255, 159, 64)',   // 橙色
-    'rgb(255, 205, 86)',   // 黄色
-    'rgb(83, 102, 147)',   // 深蓝色
-    'rgb(46, 204, 113)',   // 绿色
-    'rgb(231, 76, 60)',    // 深红色
-    'rgb(142, 68, 173)'    // 深紫色
+    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+    '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'
 ];
 
-// 单个模式专用的渐变色配置
-const singleModeColors = {
-    primary: 'rgb(54, 162, 235)',      // 主色调：蓝色
-    gradient: 'rgba(54, 162, 235, 0.1)', // 渐变背景：浅蓝色
-    success: 'rgb(46, 204, 113)',       // 成功状态：绿色
-    warning: 'rgb(255, 193, 7)',        // 警告状态：黄色
-    danger: 'rgb(220, 53, 69)'          // 危险状态：红色
+// 主题管理
+const ThemeManager = {
+    init() {
+        const savedTheme = localStorage.getItem('theme') || 'auto';
+        this.setTheme(savedTheme);
+        this.setupListeners();
+    },
+
+    setTheme(theme) {
+        localStorage.setItem('theme', theme);
+        
+        let actualTheme = theme;
+        if (theme === 'auto') {
+            actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        
+        document.documentElement.setAttribute('data-bs-theme', actualTheme);
+        this.updateThemeText(theme);
+        
+        // 更新图表颜色
+        if (chart) {
+            this.updateChartTheme(actualTheme);
+        }
+    },
+
+    updateThemeText(theme) {
+        const themeText = document.getElementById('theme-text');
+        const texts = {
+            'light': '浅色',
+            'dark': '深色',
+            'auto': '跟随系统'
+        };
+        themeText.textContent = texts[theme] || '主题';
+    },
+
+    updateChartTheme(theme) {
+        const textColor = theme === 'dark' ? '#e5e7eb' : '#374151';
+        const gridColor = theme === 'dark' ? '#374151' : '#e5e7eb';
+        
+        chart.options.scales.x.ticks.color = textColor;
+        chart.options.scales.y.ticks.color = textColor;
+        chart.options.scales.x.grid.color = gridColor;
+        chart.options.scales.y.grid.color = gridColor;
+        chart.options.plugins.legend.labels.color = textColor;
+        chart.update('none');
+    },
+
+    setupListeners() {
+        document.querySelectorAll('[data-theme]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.setTheme(btn.dataset.theme);
+            });
+        });
+
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (localStorage.getItem('theme') === 'auto') {
+                this.setTheme('auto');
+            }
+        });
+    }
 };
 
 // 初始化
-document.addEventListener('DOMContentLoaded', function() {
-    loadTargets();
+document.addEventListener('DOMContentLoaded', async function() {
+    ThemeManager.init();
+    await loadConfig();
+    await loadTargets();
     loadStatus();
     initChart();
     setupEventListeners();
     
-    // 设置定时刷新
-    setInterval(loadStatus, 10000); // 每10秒刷新状态
+    // 定时刷新状态
+    setInterval(loadStatus, 10000);
 });
+
+// 加载配置
+async function loadConfig() {
+    try {
+        const response = await fetch('/api/config');
+        config = await response.json();
+        
+        // 设置标题
+        const title = config.title || 'Scallop - 网络延迟监控';
+        document.getElementById('page-title').textContent = title;
+        document.getElementById('header-title').textContent = title;
+        
+        // 设置介绍
+        const descElement = document.getElementById('header-description');
+        if (config.description) {
+            descElement.textContent = config.description;
+            descElement.style.display = 'block';
+        } else {
+            descElement.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('加载配置失败:', error);
+    }
+}
 
 // 设置事件监听器
 function setupEventListeners() {
-    // 单个模式事件
-    document.getElementById('target-select').addEventListener('change', () => {
-        if (currentMode === 'single') loadSingleChartData();
-    });
-    document.getElementById('time-range').addEventListener('change', () => {
-        if (currentMode === 'single') loadSingleChartData();
-    });
-    document.getElementById('refresh-btn').addEventListener('click', () => {
-        if (currentMode === 'single') loadSingleChartData();
+    // 时间范围选择
+    document.querySelectorAll('.time-range-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentHours = parseInt(this.dataset.hours);
+            loadChartData();
+        });
     });
 
-    // 多目标模式事件
-    document.getElementById('multi-time-range').addEventListener('change', () => {
-        if (currentMode === 'multi') loadMultiChartData();
-    });
-    document.getElementById('multi-refresh-btn').addEventListener('click', () => {
-        if (currentMode === 'multi') loadMultiChartData();
-    });
-    document.getElementById('select-all-btn').addEventListener('click', selectAllTargets);
-    document.getElementById('deselect-all-btn').addEventListener('click', deselectAllTargets);
-
-    // 模式切换事件
-    document.getElementById('single-mode-tab').addEventListener('click', () => {
-        currentMode = 'single';
-        loadSingleChartData();
-    });
-    document.getElementById('multi-mode-tab').addEventListener('click', () => {
-        currentMode = 'multi';
-        loadMultiChartData();
+    // 折叠按钮
+    document.querySelectorAll('.collapse-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            this.classList.toggle('collapsed');
+        });
     });
 }
 
@@ -76,90 +138,70 @@ async function loadTargets() {
         const response = await fetch('/api/targets');
         targets = await response.json();
         
-        // 填充单个模式的下拉框
-        const select = document.getElementById('target-select');
-        select.innerHTML = '<option value="">选择监控目标</option>';
+        generateTargetTags();
         
-        targets.forEach(target => {
-            const option = document.createElement('option');
-            option.value = target.id; // 使用target_id而不是addr
-            // 隐藏地址显示为 ***
-            const displayAddr = target.hide_addr ? '***' : target.addr;
-            option.textContent = `${target.description} (${displayAddr})`;
-            select.appendChild(option);
+        // 默认选择前3个目标
+        targets.slice(0, Math.min(3, targets.length)).forEach(target => {
+            selectedTargets.add(target.id);
         });
         
-        // 生成多目标模式的复选框
-        generateTargetCheckboxes();
-        
-        // 默认选择第一个目标
-        if (targets.length > 0) {
-            select.value = targets[0].id;
-            loadSingleChartData();
-        }
+        updateTargetTagsUI();
+        loadChartData();
     } catch (error) {
         console.error('加载目标失败:', error);
     }
 }
 
-// 生成目标复选框
-function generateTargetCheckboxes() {
-    const container = document.getElementById('targets-checkboxes');
+// 生成目标标签
+function generateTargetTags() {
+    const container = document.getElementById('target-tags');
     container.innerHTML = '';
     
     targets.forEach((target, index) => {
-        const checkboxDiv = document.createElement('div');
-        checkboxDiv.className = 'target-checkbox';
+        const tag = document.createElement('div');
+        tag.className = 'target-tag';
+        tag.dataset.targetId = target.id;
         
         const color = chartColors[index % chartColors.length];
-        // 隐藏地址显示为 ***
         const displayAddr = target.hide_addr ? '***' : target.addr;
         
-        checkboxDiv.innerHTML = `
-            <label class="form-check-label">
-                <input type="checkbox" class="form-check-input target-checkbox-input" 
-                       value="${target.id}" data-index="${index}">
-                <span>${target.description} (<span class="${target.hide_addr ? 'hidden-addr' : ''}">${displayAddr}</span>)</span>
-                <div class="target-color-indicator" style="background-color: ${color}"></div>
-            </label>
+        tag.innerHTML = `
+            <div class="color-dot" style="background-color: ${color}"></div>
+            <span>${target.description}</span>
+            <small class="text-muted ${target.hide_addr ? 'hidden-addr' : ''}">${displayAddr}</small>
         `;
         
-        container.appendChild(checkboxDiv);
+        tag.style.color = color;
         
-        // 添加复选框变化事件
-        const checkbox = checkboxDiv.querySelector('input[type="checkbox"]');
-        checkbox.addEventListener('change', () => {
-            if (currentMode === 'multi') loadMultiChartData();
+        tag.addEventListener('click', function() {
+            toggleTarget(target.id);
         });
+        
+        container.appendChild(tag);
     });
 }
 
-// 全选目标
-function selectAllTargets() {
-    const checkboxes = document.querySelectorAll('.target-checkbox-input');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = true;
-    });
-    if (currentMode === 'multi') loadMultiChartData();
+// 切换目标选择
+function toggleTarget(targetId) {
+    if (selectedTargets.has(targetId)) {
+        selectedTargets.delete(targetId);
+    } else {
+        selectedTargets.add(targetId);
+    }
+    updateTargetTagsUI();
+    loadChartData();
 }
 
-// 全不选目标
-function deselectAllTargets() {
-    const checkboxes = document.querySelectorAll('.target-checkbox-input');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
+// 更新标签UI
+function updateTargetTagsUI() {
+    document.querySelectorAll('.target-tag').forEach(tag => {
+        const targetId = tag.dataset.targetId;
+        if (selectedTargets.has(targetId)) {
+            tag.classList.add('active');
+        } else {
+            tag.classList.remove('active');
+        }
     });
-    if (currentMode === 'multi') loadMultiChartData();
-}
-
-// 获取选中的目标
-function getSelectedTargets() {
-    const checkboxes = document.querySelectorAll('.target-checkbox-input:checked');
-    return Array.from(checkboxes).map(checkbox => ({
-        id: checkbox.value, // 使用target_id
-        index: parseInt(checkbox.dataset.index),
-        target: targets.find(t => t.id === checkbox.value)
-    }));
 }
 
 // 加载状态卡片
@@ -170,6 +212,8 @@ async function loadStatus() {
         
         const container = document.getElementById('status-cards');
         container.innerHTML = '';
+        
+        document.getElementById('status-count').textContent = statuses.length;
         
         statuses.forEach(status => {
             const card = createStatusCard(status);
@@ -183,28 +227,92 @@ async function loadStatus() {
 // 创建状态卡片
 function createStatusCard(status) {
     const col = document.createElement('div');
-    col.className = 'col-md-4 col-lg-3 mb-3';
+    col.className = 'col-md-6 col-lg-4 col-xl-3';
     
-    const statusClass = status.success ? 'status-success' : 'status-failed';
-    const statusText = status.success ? '正常' : '失败';
-    const latencyText = status.success ? `${status.latency.toFixed(2)}ms` : 'N/A';
-    const timeText = new Date(status.timestamp).toLocaleString('zh-CN');
+    // 判断延迟等级
+    let latencyClass = 'offline';
+    let latencyLevel = '离线';
+    if (status.success) {
+        if (status.latency < 50) {
+            latencyClass = 'excellent';
+            latencyLevel = '优秀';
+        } else if (status.latency < 100) {
+            latencyClass = 'good';
+            latencyLevel = '良好';
+        } else if (status.latency < 200) {
+            latencyClass = 'fair';
+            latencyLevel = '一般';
+        } else {
+            latencyClass = 'poor';
+            latencyLevel = '较差';
+        }
+    }
     
-    // 处理地址显示（隐藏地址显示为***加雾化效果）
-    const addrDisplay = status.hide_addr ? 
-        `<small class="text-muted hidden-addr">***</small><br>` : 
-        (status.addr ? `<small class="text-muted">${status.addr}</small><br>` : '');
+    const statusIndicator = status.success ? 
+        `<span class="status-indicator online"><i class="fas fa-circle-check"></i>在线</span>` :
+        `<span class="status-indicator offline"><i class="fas fa-circle-xmark"></i>离线</span>`;
+    
+    const latencyValue = status.success ? status.latency.toFixed(1) : '--';
+    
+    const timeText = new Date(status.timestamp).toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    
+    // 地址显示和操作按钮
+    let addrSection = '';
+    if (status.hide_addr) {
+        addrSection = `
+            <div class="status-card-addr">
+                <span class="addr-text">地址已隐藏</span>
+                <span class="hidden-icon" title="地址已隐藏">
+                    <i class="fas fa-eye-slash"></i>
+                </span>
+            </div>
+        `;
+    } else if (status.addr) {
+        addrSection = `
+            <div class="status-card-addr">
+                <span class="addr-text">${status.addr}</span>
+                <button class="copy-btn" onclick="copyAddress('${status.addr}', this)" title="复制地址">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        `;
+    }
     
     col.innerHTML = `
-        <div class="card status-card ${statusClass}">
+        <div class="status-card">
             <div class="card-body">
-                <h6 class="card-title">${status.description}</h6>
-                <p class="card-text">
-                    ${addrDisplay}
-                    <span class="badge ${status.success ? 'bg-success' : 'bg-danger'}">${statusText}</span>
-                    <span class="ms-2">${latencyText}</span><br>
-                    <small class="text-muted">${timeText}</small>
-                </p>
+                <div class="status-card-header">
+                    <h6 class="status-card-title">${status.description}</h6>
+                    ${statusIndicator}
+                </div>
+                
+                ${addrSection}
+                
+                <div class="status-metrics">
+                    <div class="metric-item">
+                        <div class="metric-label">延迟</div>
+                        <div class="metric-value ${latencyClass}">
+                            ${latencyValue}<span class="metric-unit">ms</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">状态</div>
+                        <div class="metric-value ${latencyClass}" style="font-size: 1rem;">
+                            ${latencyLevel}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="status-timestamp">
+                    <i class="far fa-clock"></i>
+                    <span>${timeText}</span>
+                </div>
             </div>
         </div>
     `;
@@ -212,9 +320,34 @@ function createStatusCard(status) {
     return col;
 }
 
+// 复制地址到剪贴板
+function copyAddress(addr, button) {
+    navigator.clipboard.writeText(addr).then(() => {
+        const icon = button.querySelector('i');
+        const originalClass = icon.className;
+        
+        // 显示复制成功
+        icon.className = 'fas fa-check';
+        button.classList.add('copied');
+        
+        // 2秒后恢复
+        setTimeout(() => {
+            icon.className = originalClass;
+            button.classList.remove('copied');
+        }, 2000);
+    }).catch(err => {
+        console.error('复制失败:', err);
+        alert('复制失败，请手动复制');
+    });
+}
+
 // 初始化图表
 function initChart() {
     const ctx = document.getElementById('ping-chart').getContext('2d');
+    
+    const theme = document.documentElement.getAttribute('data-bs-theme');
+    const textColor = theme === 'dark' ? '#e5e7eb' : '#374151';
+    const gridColor = theme === 'dark' ? '#374151' : '#e5e7eb';
     
     chart = new Chart(ctx, {
         type: 'line',
@@ -225,178 +358,149 @@ function initChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: '延迟 (毫秒)'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: '时间'
-                    }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Ping 延迟趋势'
-                },
-                legend: {
-                    display: true,
-                    position: 'top'
-                }
-            },
             interaction: {
                 intersect: false,
                 mode: 'index'
             },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: textColor,
+                        usePointStyle: true,
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y.toFixed(2) + 'ms';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: textColor,
+                        maxRotation: 45,
+                        minRotation: 0
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: gridColor,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: textColor,
+                        callback: function(value) {
+                            return value + 'ms';
+                        }
+                    }
+                }
+            },
             elements: {
+                line: {
+                    tension: 0.4,
+                    borderWidth: 2
+                },
                 point: {
-                    radius: 2,
-                    hoverRadius: 4
+                    radius: 0,
+                    hitRadius: 10,
+                    hoverRadius: 5
                 }
             }
         }
     });
 }
 
-// 加载单个目标图表数据
-async function loadSingleChartData() {
-    const targetId = document.getElementById('target-select').value;
-    const hours = document.getElementById('time-range').value;
-    
-    if (!targetId) {
-        // 清空图表
+// 加载图表数据
+async function loadChartData() {
+    if (selectedTargets.size === 0) {
         chart.data.labels = [];
         chart.data.datasets = [];
-        chart.options.plugins.title.text = 'Ping 延迟趋势';
         chart.update();
         return;
     }
     
     try {
-        const response = await fetch(`/api/ping-data?target_id=${encodeURIComponent(targetId)}&hours=${hours}`);
-        const data = await response.json();
-        
-        // 找到目标描述
-        const target = targets.find(t => t.id === targetId);
-        const description = target ? target.description : targetId;
-        const displayAddr = target && target.addr && !target.hide_addr ? target.addr : '';
-        
-        // 处理数据
-        const labels = [];
-        const latencies = [];
-        
-        data.forEach(item => {
-            const time = new Date(item.timestamp);
-            labels.push(time.toLocaleTimeString('zh-CN'));
-            latencies.push(item.success ? item.latency : null);
-        });
-        
-        // 更新图表
-        chart.data.labels = labels;
-        chart.data.datasets = [{
-            label: `${description} - Ping 延迟 (ms)`,
-            data: latencies,
-            borderColor: singleModeColors.primary,
-            backgroundColor: singleModeColors.gradient,
-            borderWidth: 2,
-            tension: 0.4,
-            fill: true,
-            spanGaps: true,
-            pointBackgroundColor: singleModeColors.primary,
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            pointRadius: 3,
-            pointHoverRadius: 5
-        }];
-        
-        const titleAddr = displayAddr ? ` (${displayAddr})` : '';
-        chart.options.plugins.title.text = `${description}${titleAddr} - Ping 延迟趋势`;
-        chart.update();
-        
-    } catch (error) {
-        console.error('加载图表数据失败:', error);
-    }
-}
-
-// 加载多目标图表数据
-async function loadMultiChartData() {
-    const selectedTargets = getSelectedTargets();
-    const hours = document.getElementById('multi-time-range').value;
-    
-    if (selectedTargets.length === 0) {
-        // 清空图表
-        chart.data.labels = [];
-        chart.data.datasets = [];
-        chart.options.plugins.title.text = 'Ping 延迟趋势 - 请选择监控目标';
-        chart.update();
-        return;
-    }
-    
-    try {
-        // 并行获取所有选中目标的数据
-        const dataPromises = selectedTargets.map(async (selected) => {
-            const response = await fetch(`/api/ping-data?target_id=${encodeURIComponent(selected.id)}&hours=${hours}`);
+        const dataPromises = Array.from(selectedTargets).map(async (targetId) => {
+            const response = await fetch(`/api/ping-data?target_id=${encodeURIComponent(targetId)}&hours=${currentHours}`);
             const data = await response.json();
-            return {
-                ...selected,
-                data: data
-            };
+            const target = targets.find(t => t.id === targetId);
+            return { target, data };
         });
         
         const allData = await Promise.all(dataPromises);
         
-        // 找到所有时间点的并集
+        // 收集所有时间戳
         const allTimestamps = new Set();
-        allData.forEach(targetData => {
-            targetData.data.forEach(item => {
-                allTimestamps.add(item.timestamp);
-            });
+        allData.forEach(({ data }) => {
+            data.forEach(item => allTimestamps.add(item.timestamp));
         });
         
-        // 排序时间点
         const sortedTimestamps = Array.from(allTimestamps).sort();
-        const labels = sortedTimestamps.map(timestamp => 
-            new Date(timestamp).toLocaleTimeString('zh-CN')
-        );
+        const labels = sortedTimestamps.map(timestamp => {
+            const date = new Date(timestamp);
+            if (currentHours <= 24) {
+                return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit' });
+            }
+        });
         
-        // 为每个目标创建数据集
-        const datasets = allData.map(targetData => {
-            const color = chartColors[targetData.index % chartColors.length];
+        // 创建数据集
+        const datasets = allData.map(({ target, data }, index) => {
+            const targetIndex = targets.findIndex(t => t.id === target.id);
+            const color = chartColors[targetIndex % chartColors.length];
             
-            // 创建数据数组，对应所有时间点
             const dataPoints = sortedTimestamps.map(timestamp => {
-                const dataPoint = targetData.data.find(item => item.timestamp === timestamp);
-                return dataPoint && dataPoint.success ? dataPoint.latency : null;
+                const point = data.find(item => item.timestamp === timestamp);
+                return point && point.success ? point.latency : null;
             });
             
-            // 隐藏地址显示为 ***
-            const displayAddr = targetData.target.addr && !targetData.target.hide_addr ? 
-                ` (${targetData.target.addr})` : (targetData.target.hide_addr ? ' (***)' : '');
+            const displayAddr = target.addr && !target.hide_addr ? ` (${target.addr})` : '';
             
             return {
-                label: `${targetData.target.description}${displayAddr}`,
+                label: `${target.description}${displayAddr}`,
                 data: dataPoints,
                 borderColor: color,
                 backgroundColor: color + '20',
-                tension: 0.1,
-                fill: false,
-                spanGaps: true
+                spanGaps: true,
+                fill: false
             };
         });
         
-        // 更新图表
         chart.data.labels = labels;
         chart.data.datasets = datasets;
-        chart.options.plugins.title.text = `多目标 Ping 延迟趋势对比 (${selectedTargets.length}个目标)`;
         chart.update();
         
     } catch (error) {
-        console.error('加载多目标图表数据失败:', error);
+        console.error('加载图表数据失败:', error);
     }
 }

@@ -174,6 +174,8 @@ func (s *Server) handleConfig(c *gin.Context) {
 	targets := s.db.GetTargets()
 
 	c.JSON(http.StatusOK, gin.H{
+		"title":         config.Title,
+		"description":   config.Description,
 		"ping_interval": config.PingInterval,
 		"ping_count":    config.PingCount,
 		"web_port":      config.WebPort,

@@ -12,6 +12,8 @@ type IPTarget struct {
 
 // Config 应用配置
 type Config struct {
+	Title        string     `json:"title,omitempty"`       // 页面标题
+	Description  string     `json:"description,omitempty"` // 页面介绍
 	Targets      []IPTarget `json:"targets"`
 	PingInterval int        `json:"ping_interval"` // ping间隔，单位：秒
 	PingCount    int        `json:"ping_count"`    // 每次ping的次数，默认4次

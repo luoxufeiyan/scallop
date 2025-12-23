@@ -75,6 +75,8 @@ func (m *Manager) Load() error {
 // createDefaultConfig 创建默认配置
 func (m *Manager) createDefaultConfig() error {
 	defaultConfig := models.Config{
+		Title:       "Scallop - 网络延迟监控",
+		Description: "",
 		Targets: []models.IPTarget{
 			{Addr: "8.8.8.8", Description: "Google DNS", HideAddr: false},
 			{Addr: "114.114.114.114", Description: "114 DNS", HideAddr: false},

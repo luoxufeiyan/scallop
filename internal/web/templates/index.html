@@ -1,224 +1,685 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-bs-theme="auto">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scallop - 网络延迟监控</title>
+    <title id="page-title">Scallop - 网络延迟监控</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        .status-card {
+        :root {
+            --bs-body-bg: #f8f9fa;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --card-hover-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+
+        [data-bs-theme="dark"] {
+            --bs-body-bg: #1a1d20;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            --card-hover-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+
+        body {
+            background: var(--bs-body-bg);
+            transition: background-color 0.3s ease;
+        }
+
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        [data-bs-theme="dark"] .header-section {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+        }
+
+        .header-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .header-description {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            margin-top: 0.5rem;
+        }
+
+        .theme-switcher {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
             transition: all 0.3s ease;
         }
-        .status-success {
-            border-left: 4px solid #28a745;
+
+        .theme-switcher:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
         }
-        .status-failed {
-            border-left: 4px solid #dc3545;
-        }
-        .chart-container {
+
+        .status-card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+            overflow: hidden;
             position: relative;
-            height: 400px;
-            margin: 20px 0;
         }
-        .target-checkbox {
-            margin-bottom: 8px;
+
+        .status-card:hover {
+            box-shadow: var(--card-hover-shadow);
+            transform: translateY(-4px);
         }
-        .target-checkbox input[type="checkbox"] {
-            margin-right: 8px;
+
+        .status-card .card-body {
+            padding: 1.5rem;
         }
-        .target-checkbox label {
-            cursor: pointer;
+
+        .status-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .status-card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0;
+            color: #1f2937;
+        }
+
+        [data-bs-theme="dark"] .status-card-title {
+            color: #f3f4f6;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .status-indicator.online {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .status-indicator.offline {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .status-indicator i {
+            font-size: 0.75rem;
+        }
+
+        .status-card-addr {
             display: flex;
             align-items: center;
-        }
-        .target-color-indicator {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            margin-left: 8px;
-            border: 2px solid #fff;
-            box-shadow: 0 0 0 1px #ccc;
-        }
-        .chart-controls {
-            background: #f8f9fa;
-            padding: 20px;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.6rem 0.8rem;
+            background: rgba(0, 0, 0, 0.03);
             border-radius: 8px;
-            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
         }
-        .display-mode-tabs {
-            margin-bottom: 20px;
+
+        [data-bs-theme="dark"] .status-card-addr {
+            background: rgba(255, 255, 255, 0.05);
         }
-        .targets-panel {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #dee2e6;
+
+        .status-card-addr .addr-text {
+            flex: 1;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        [data-bs-theme="dark"] .status-card-addr .addr-text {
+            color: #9ca3af;
+        }
+
+        .copy-btn, .hidden-icon {
+            padding: 0.3rem 0.6rem;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
             border-radius: 6px;
-            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #6b7280;
+            font-size: 0.875rem;
         }
-        
-        /* 隐藏地址的雾化遮罩效果 */
-        .hidden-addr {
+
+        [data-bs-theme="dark"] .copy-btn,
+        [data-bs-theme="dark"] .hidden-icon {
+            background: rgba(255, 255, 255, 0.1);
+            color: #9ca3af;
+        }
+
+        .copy-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .copy-btn.copied {
+            background: #10b981;
+            color: white;
+        }
+
+        .hidden-icon {
+            cursor: default;
+        }
+
+        .status-metrics {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .metric-item {
+            flex: 1;
+            text-align: center;
+            padding: 0.8rem;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        [data-bs-theme="dark"] .metric-item {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .metric-value.excellent {
+            color: #10b981;
+        }
+
+        .metric-value.good {
+            color: #3b82f6;
+        }
+
+        .metric-value.fair {
+            color: #f59e0b;
+        }
+
+        .metric-value.poor {
+            color: #ef4444;
+        }
+
+        .metric-value.offline {
+            color: #6b7280;
+        }
+
+        .metric-unit {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-left: 0.2rem;
+        }
+
+        .status-timestamp {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 0.5rem;
+        }
+
+        .status-timestamp i {
+            font-size: 0.75rem;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+
+        [data-bs-theme="dark"] .chart-container {
+            background: #2d3748;
+        }
+
+        .chart-canvas-wrapper {
             position: relative;
-            display: inline-block;
-            color: #6c757d;
+            height: 400px;
+            margin-top: 1rem;
+        }
+
+        .target-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        [data-bs-theme="dark"] .target-tag {
+            background: #374151;
+            color: #e5e7eb;
+        }
+
+        .target-tag:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .target-tag.active {
+            border-color: currentColor;
+            font-weight: 600;
+        }
+
+        .target-tag .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .hidden-addr {
+            font-family: monospace;
             letter-spacing: 2px;
-            font-weight: bold;
-            padding: 2px 8px;
-            background: linear-gradient(135deg, rgba(108, 117, 125, 0.1) 0%, rgba(108, 117, 125, 0.05) 100%);
-            border-radius: 4px;
-            backdrop-filter: blur(2px);
-            text-shadow: 0 0 8px rgba(108, 117, 125, 0.3);
+            opacity: 0.6;
         }
-        
-        .hidden-addr::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
-            border-radius: 4px;
-            pointer-events: none;
+
+        .collapse-toggle {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
         }
-        
-        .hidden-addr::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+
+        .collapse-toggle:hover {
+            opacity: 0.8;
+        }
+
+        .collapse-toggle i {
+            transition: transform 0.3s ease;
+        }
+
+        .collapse-toggle.collapsed i {
+            transform: rotate(-90deg);
+        }
+
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+
+        [data-bs-theme="dark"] .section-card {
+            background: #2d3748;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-custom {
+            border-radius: 8px;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .time-range-selector {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .time-range-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        [data-bs-theme="dark"] .time-range-btn {
+            background: #374151;
+            border-color: #4b5563;
+            color: #e5e7eb;
+        }
+
+        .time-range-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .time-range-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        .github-link {
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .github-link:hover {
+            background: rgba(255,255,255,0.3);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .header-title {
+                font-size: 1.5rem;
+            }
+            
+            .target-tag {
+                font-size: 0.875rem;
+                padding: 0.4rem 0.8rem;
+            }
+        }
+
+        /* Footer 样式 */
+        .footer {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-top: 3rem;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+        }
+
+        [data-bs-theme="dark"] .footer {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .footer-logo {
+            font-size: 2rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .footer-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .footer-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-subtitle {
+            font-size: 0.875rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .footer-link {
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .footer-link:hover {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .footer-link i {
+            font-size: 1.1rem;
+        }
+
+        .footer-divider {
             width: 100%;
-            height: 100%;
-            background: radial-gradient(ellipse at center, rgba(108, 117, 125, 0.15) 0%, transparent 60%);
-            filter: blur(4px);
-            pointer-events: none;
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            margin: 1rem 0;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            font-size: 0.875rem;
+            opacity: 0.85;
+        }
+
+        .footer-bottom a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+        }
+
+        .footer-bottom a:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .footer-brand {
+                flex-direction: column;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .footer-link {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center my-4">
-                    <h1 class="text-center flex-grow-1 mb-0">Scallop - 网络延迟监控</h1>
-                    <a href="https://github.com/luoxufeiyan/scallop" target="_blank" 
-                       class="btn btn-outline-primary btn-sm ms-3">
-                        <i class="fab fa-github me-1"></i>GitHub
+    <!-- 头部 -->
+    <div class="header-section">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <h1 class="header-title" id="header-title">Scallop - 网络延迟监控</h1>
+                    <p class="header-description mb-0" id="header-description"></p>
+                </div>
+                <div class="d-flex gap-2">
+                    <div class="dropdown">
+                        <button class="theme-switcher dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-palette me-1"></i>
+                            <span id="theme-text">主题</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" data-theme="light">
+                                <i class="fas fa-sun me-2"></i>浅色
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-theme="dark">
+                                <i class="fas fa-moon me-2"></i>深色
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-theme="auto">
+                                <i class="fas fa-circle-half-stroke me-2"></i>跟随系统
+                            </a></li>
+                        </ul>
+                    </div>
+                    <a href="https://github.com/luoxufeiyan/scallop" target="_blank" class="github-link">
+                        <i class="fab fa-github"></i>
+                        <span class="d-none d-md-inline">GitHub</span>
                     </a>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- 状态卡片 -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h3>当前状态</h3>
+    <div class="container">
+        <!-- 当前状态 -->
+        <div class="section-card">
+            <div class="section-title collapse-toggle" data-bs-toggle="collapse" data-bs-target="#status-section">
+                <i class="fas fa-chevron-down"></i>
+                <span>当前状态</span>
+                <span class="badge bg-primary ms-2" id="status-count">0</span>
+            </div>
+            <div class="collapse show" id="status-section">
                 <div id="status-cards" class="row">
                     <!-- 状态卡片将通过JavaScript动态生成 -->
                 </div>
             </div>
         </div>
 
-        <!-- 图表控制面板 -->
-        <div class="row">
-            <div class="col-12">
-                <div class="chart-controls">
-                    <!-- 显示模式选择 -->
-                    <div class="display-mode-tabs">
-                        <ul class="nav nav-pills" id="display-mode-tabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="single-mode-tab" data-bs-toggle="pill" 
-                                        data-bs-target="#single-mode" type="button" role="tab">
-                                    单个显示
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="multi-mode-tab" data-bs-toggle="pill" 
-                                        data-bs-target="#multi-mode" type="button" role="tab">
-                                    聚合显示
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!-- 显示模式内容 -->
-                    <div class="tab-content" id="display-mode-content">
-                        <!-- 单个显示模式 -->
-                        <div class="tab-pane fade show active" id="single-mode" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <label class="form-label">选择监控目标：</label>
-                                    <select id="target-select" class="form-select">
-                                        <option value="">选择监控目标</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">时间范围：</label>
-                                    <select id="time-range" class="form-select">
-                                        <option value="1">最近1小时</option>
-                                        <option value="6">最近6小时</option>
-                                        <option value="24">最近24小时</option>
-                                        <option value="168">最近7天</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3 d-flex align-items-end">
-                                    <button id="refresh-btn" class="btn btn-primary">刷新数据</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 聚合显示模式 -->
-                        <div class="tab-pane fade" id="multi-mode" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <label class="form-label">选择要显示的目标：</label>
-                                    <div class="targets-panel" id="targets-checkboxes">
-                                        <!-- 复选框将通过JavaScript动态生成 -->
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="row">
-                                        <div class="col-12 mb-3">
-                                            <label class="form-label">时间范围：</label>
-                                            <select id="multi-time-range" class="form-select">
-                                                <option value="1">最近1小时</option>
-                                                <option value="6">最近6小时</option>
-                                                <option value="24">最近24小时</option>
-                                                <option value="168">最近7天</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-12 mb-3">
-                                            <button id="multi-refresh-btn" class="btn btn-primary w-100">刷新数据</button>
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="d-grid gap-2">
-                                                <button id="select-all-btn" class="btn btn-outline-secondary btn-sm">全选</button>
-                                                <button id="deselect-all-btn" class="btn btn-outline-secondary btn-sm">全不选</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- 图表区域 -->
+        <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    延迟趋势图
+                </h5>
+                <div class="time-range-selector">
+                    <button class="time-range-btn active" data-hours="1">1小时</button>
+                    <button class="time-range-btn" data-hours="6">6小时</button>
+                    <button class="time-range-btn" data-hours="24">24小时</button>
+                    <button class="time-range-btn" data-hours="168">7天</button>
                 </div>
             </div>
-        </div>
+            
+            <div id="target-tags" class="mb-3">
+                <!-- 目标标签将通过JavaScript动态生成 -->
+            </div>
 
-        <!-- 图表 -->
-        <div class="row">
-            <div class="col-12">
-                <div class="chart-container">
-                    <canvas id="ping-chart"></canvas>
-                </div>
+            <div class="chart-canvas-wrapper">
+                <canvas id="ping-chart"></canvas>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="footer-logo">🐚</div>
+                    <div class="footer-text">
+                        <h3 class="footer-title">Scallop</h3>
+                        <p class="footer-subtitle">网络延迟监控工具</p>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <a href="https://github.com/luoxufeiyan/scallop" target="_blank" class="footer-link">
+                        <i class="fab fa-github"></i>
+                        <span>GitHub</span>
+                    </a>
+                    <a href="https://github.com/luoxufeiyan/scallop/issues" target="_blank" class="footer-link">
+                        <i class="fas fa-bug"></i>
+                        <span>反馈问题</span>
+                    </a>
+                    <a href="https://github.com/luoxufeiyan/scallop/blob/main/README.md" target="_blank" class="footer-link">
+                        <i class="fas fa-book"></i>
+                        <span>文档</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="footer-divider"></div>
+            
+            <div class="footer-bottom">
+                <p class="mb-0">
+                    Made with <i class="fas fa-heart" style="color: #ef4444;"></i> by 
+                    <a href="https://github.com/luoxufeiyan" target="_blank">luoxufeiyan</a>
+                    &nbsp;|&nbsp;
+                    <a href="https://github.com/luoxufeiyan/scallop/blob/main/LICENSE" target="_blank">MIT License</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

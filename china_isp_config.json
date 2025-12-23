@@ -1,0 +1,70 @@
+{
+  "title": "Scallop - 网络延迟监控",
+  "description": "对国内ISP的监控",
+  "targets": [
+    {
+      "addr": "150.138.142.132",
+      "description": "青岛电信"
+    },
+    {
+      "addr": "202.96.209.133",
+      "description": "上海电信"
+    },
+    {
+      "addr": "202.96.128.166",
+      "description": "广州电信"
+    },
+    {
+      "addr": "111.201.101.156",
+      "description": "北京联通"
+    },
+    {
+      "addr": "140.207.198.6",
+      "description": "上海联通"
+    },
+    {
+      "addr": "202.98.0.68",
+      "description": "长春联通"
+    },
+    {
+      "addr": "202.102.128.68",
+      "description": "青岛联通"
+    },
+    {
+      "addr": "120.80.88.88",
+      "description": "广州联通"
+    },
+    {
+      "addr": "221.12.1.227",
+      "description": "杭州联通"
+    },
+    {
+      "addr": "221.130.33.60",
+      "description": "北京移动"
+    },
+    {
+      "addr": "211.136.112.50",
+      "description": "上海移动"
+    },
+    {
+      "addr": "211.136.192.6",
+      "description": "广州移动"
+    },
+    {
+      "addr": "218.201.96.130",
+      "description": "青岛移动"
+    },
+    {
+      "addr": "211.137.191.26",
+      "description": "济南移动"
+    },
+    {
+      "addr": "211.140.13.188",
+      "description": "杭州移动"
+    }
+  ],
+
+  "ping_interval": 10,
+  "web_port": 8081,
+  "default_dns": ""
+}

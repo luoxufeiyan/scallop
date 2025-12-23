@@ -1,4 +1,6 @@
 {
+  "title": "Scallop - 网络延迟监控",
+  "description": "实时监控网络延迟，支持多目标对比分析",
   "targets": [
     {
       "addr": "8.8.8.8",
