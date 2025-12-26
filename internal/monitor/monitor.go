@@ -119,6 +119,13 @@ func (m *Monitor) watchConfig() {
 		if stat.ModTime().After(m.configManager.GetLastModTime()) {
 			fmt.Println("检测到配置文件变化，重新加载...")
 
+			// 保存旧的目标列表
+			oldTargets := m.db.GetTargets()
+			oldTargetIDs := make(map[string]bool)
+			for id := range oldTargets {
+				oldTargetIDs[id] = true
+			}
+
 			if err := m.configManager.Load(); err != nil {
 				fmt.Printf("重新加载配置失败: %v\n", err)
 				continue
@@ -132,6 +139,15 @@ func (m *Monitor) watchConfig() {
 
 			// 更新ping执行器的ping次数
 			m.pingExecutor = ping.NewExecutor(config.PingCount)
+
+			// 检测新增的目标并立即进行ping测试
+			newTargets := m.db.GetTargets()
+			for id, target := range newTargets {
+				if !oldTargetIDs[id] {
+					fmt.Printf("检测到新目标，立即进行ping测试: %s (%s)\n", target.Description, target.Addr)
+					go m.pingAndSave(target)
+				}
+			}
 
 			fmt.Println("配置重新加载完成")
 		}

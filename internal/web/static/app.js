@@ -4,6 +4,7 @@ let targets = [];
 let selectedTargets = new Set();
 let currentHours = 1;
 let config = {};
+let customTimeRange = null; // 存储自定义时间范围 {start: Date, end: Date}
 
 // 预定义的颜色数组
 const chartColors = [
@@ -119,10 +120,22 @@ function setupEventListeners() {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            currentHours = parseInt(this.dataset.hours);
-            loadChartData();
+            
+            if (this.dataset.custom === 'true') {
+                // 显示自定义时间选择器
+                showCustomTimeRange();
+            } else {
+                // 隐藏自定义时间选择器
+                hideCustomTimeRange();
+                customTimeRange = null;
+                currentHours = parseInt(this.dataset.hours);
+                loadChartData();
+            }
         });
     });
+
+    // 应用自定义时间范围
+    document.getElementById('apply-custom-range').addEventListener('click', applyCustomTimeRange);
 
     // 折叠按钮
     document.querySelectorAll('.collapse-toggle').forEach(toggle => {
@@ -130,6 +143,109 @@ function setupEventListeners() {
             this.classList.toggle('collapsed');
         });
     });
+}
+
+// 显示自定义时间选择器
+function showCustomTimeRange() {
+    const container = document.getElementById('custom-time-range');
+    container.classList.add('show');
+    
+    // 设置默认值：结束时间为当前，开始时间为24小时前
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    // 只在首次打开或值为空时设置默认值
+    if (!document.getElementById('start-time').value) {
+        document.getElementById('start-time').value = formatDateTimeLocal(yesterday);
+    }
+    if (!document.getElementById('end-time').value) {
+        document.getElementById('end-time').value = formatDateTimeLocal(now);
+    }
+}
+
+// 隐藏自定义时间选择器
+function hideCustomTimeRange() {
+    const container = document.getElementById('custom-time-range');
+    container.classList.remove('show');
+}
+
+// 应用自定义时间范围
+function applyCustomTimeRange() {
+    const startInput = document.getElementById('start-time').value;
+    const endInput = document.getElementById('end-time').value;
+    
+    if (!startInput || !endInput) {
+        showNotification('请选择开始和结束时间', 'warning');
+        return;
+    }
+    
+    const startTime = new Date(startInput);
+    const endTime = new Date(endInput);
+    
+    if (startTime >= endTime) {
+        showNotification('开始时间必须早于结束时间', 'error');
+        return;
+    }
+    
+    // 检查时间范围是否过大（超过30天）
+    const daysDiff = (endTime - startTime) / (1000 * 60 * 60 * 24);
+    if (daysDiff > 30) {
+        showNotification('时间范围不能超过30天', 'warning');
+        return;
+    }
+    
+    customTimeRange = {
+        start: startTime,
+        end: endTime
+    };
+    
+    showNotification('正在加载数据...', 'info');
+    loadChartData();
+}
+
+// 显示通知消息
+function showNotification(message, type = 'info') {
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas ${getNotificationIcon(type)} me-2"></i>
+        <span>${message}</span>
+    `;
+    
+    // 添加到页面
+    document.body.appendChild(notification);
+    
+    // 触发动画
+    setTimeout(() => notification.classList.add('show'), 10);
+    
+    // 3秒后移除
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// 获取通知图标
+function getNotificationIcon(type) {
+    const icons = {
+        'info': 'fa-info-circle',
+        'success': 'fa-check-circle',
+        'warning': 'fa-exclamation-triangle',
+        'error': 'fa-times-circle'
+    };
+    return icons[type] || icons.info;
+}
+
+// 格式化日期时间为 datetime-local 输入格式
+function formatDateTimeLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 // 加载目标列表
@@ -450,7 +566,18 @@ async function loadChartData() {
     
     try {
         const dataPromises = Array.from(selectedTargets).map(async (targetId) => {
-            const response = await fetch(`/api/ping-data?target_id=${encodeURIComponent(targetId)}&hours=${currentHours}`);
+            let url = `/api/ping-data?target_id=${encodeURIComponent(targetId)}`;
+            
+            // 使用自定义时间范围或小时数
+            if (customTimeRange) {
+                const startTime = customTimeRange.start.toISOString();
+                const endTime = customTimeRange.end.toISOString();
+                url += `&start_time=${encodeURIComponent(startTime)}&end_time=${encodeURIComponent(endTime)}`;
+            } else {
+                url += `&hours=${currentHours}`;
+            }
+            
+            const response = await fetch(url);
             const data = await response.json();
             const target = targets.find(t => t.id === targetId);
             return { target, data };
@@ -465,9 +592,15 @@ async function loadChartData() {
         });
         
         const sortedTimestamps = Array.from(allTimestamps).sort();
+        
+        // 根据时间范围决定标签格式
+        const timeSpan = customTimeRange 
+            ? (customTimeRange.end - customTimeRange.start) / (1000 * 60 * 60) 
+            : currentHours;
+        
         const labels = sortedTimestamps.map(timestamp => {
             const date = new Date(timestamp);
-            if (currentHours <= 24) {
+            if (timeSpan <= 24) {
                 return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
             } else {
                 return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit' });

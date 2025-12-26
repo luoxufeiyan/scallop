@@ -71,6 +71,9 @@ func (s *Server) registerRoutes(r *gin.Engine) {
 	// 主页
 	r.GET("/", s.handleIndex)
 
+	// PWA manifest
+	r.GET("/manifest.json", s.handleManifest)
+
 	// API路由
 	api := r.Group("/api")
 	{
@@ -109,10 +112,38 @@ func (s *Server) handleIndex(c *gin.Context) {
 func (s *Server) handlePingData(c *gin.Context) {
 	targetID := c.Query("target_id")
 	addr := c.Query("addr") // 兼容旧API
-	hours := c.DefaultQuery("hours", "1")
+	hours := c.Query("hours")
+	startTime := c.Query("start_time")
+	endTime := c.Query("end_time")
 
-	h, _ := strconv.Atoi(hours)
-	since := time.Now().Add(-time.Duration(h) * time.Hour)
+	var since, until time.Time
+	var err error
+
+	// 优先使用自定义时间范围
+	if startTime != "" && endTime != "" {
+		since, err = time.Parse(time.RFC3339, startTime)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "开始时间格式错误"})
+			return
+		}
+		until, err = time.Parse(time.RFC3339, endTime)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "结束时间格式错误"})
+			return
+		}
+		if since.After(until) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "开始时间不能晚于结束时间"})
+			return
+		}
+	} else {
+		// 使用小时数
+		h := 1
+		if hours != "" {
+			h, _ = strconv.Atoi(hours)
+		}
+		since = time.Now().Add(-time.Duration(h) * time.Hour)
+		until = time.Now()
+	}
 
 	var query string
 	var args []interface{}
@@ -121,16 +152,16 @@ func (s *Server) handlePingData(c *gin.Context) {
 		query = `SELECT pr.target_id, t.addr, t.description, t.hide_addr, pr.latency, pr.success, pr.timestamp 
 				 FROM ping_results pr 
 				 JOIN targets t ON pr.target_id = t.id 
-				 WHERE pr.target_id = ? AND pr.timestamp > ? 
+				 WHERE pr.target_id = ? AND pr.timestamp >= ? AND pr.timestamp <= ? 
 				 ORDER BY pr.timestamp ASC`
-		args = []interface{}{targetID, since}
+		args = []interface{}{targetID, since, until}
 	} else if addr != "" {
 		query = `SELECT pr.target_id, t.addr, t.description, t.hide_addr, pr.latency, pr.success, pr.timestamp 
 				 FROM ping_results pr 
 				 JOIN targets t ON pr.target_id = t.id 
-				 WHERE t.addr = ? AND pr.timestamp > ? 
+				 WHERE t.addr = ? AND pr.timestamp >= ? AND pr.timestamp <= ? 
 				 ORDER BY pr.timestamp ASC`
-		args = []interface{}{addr, since}
+		args = []interface{}{addr, since, until}
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "需要提供target_id或addr参数"})
 		return
@@ -204,6 +235,50 @@ func (s *Server) handleStatus(c *gin.Context) {
 
 	results := s.scanPingResults(rows)
 	c.JSON(http.StatusOK, results)
+}
+
+// handleManifest 处理 PWA manifest.json
+func (s *Server) handleManifest(c *gin.Context) {
+	config := s.configManager.Get()
+	
+	title := config.Title
+	if title == "" {
+		title = "Scallop - 网络延迟监控"
+	}
+	
+	description := config.Description
+	if description == "" {
+		description = "实时监控网络延迟和连接状态"
+	}
+	
+	manifest := map[string]interface{}{
+		"name":             title,
+		"short_name":       "Scallop",
+		"description":      description,
+		"start_url":        "/",
+		"display":          "standalone",
+		"background_color": "#667eea",
+		"theme_color":      "#667eea",
+		"orientation":      "portrait-primary",
+		"icons": []map[string]interface{}{
+			{
+				"src":     "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🐚</text></svg>",
+				"sizes":   "192x192",
+				"type":    "image/svg+xml",
+				"purpose": "any maskable",
+			},
+			{
+				"src":     "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🐚</text></svg>",
+				"sizes":   "512x512",
+				"type":    "image/svg+xml",
+				"purpose": "any maskable",
+			},
+		},
+		"categories":  []string{"utilities", "productivity"},
+		"screenshots": []interface{}{},
+	}
+	
+	c.JSON(http.StatusOK, manifest)
 }
 
 // scanPingResults 扫描ping结果

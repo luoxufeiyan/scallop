@@ -20,22 +20,34 @@
 
 使用安装脚本自动下载、配置并创建systemd服务：
 
-```bash
-# 方式1：直接运行
-curl -fsSL https://raw.githubusercontent.com/luoxufeiyan/scallop/master/scripts/install.sh | sudo bash
+- 方式1：直接运行
 
-# 方式2：下载后执行
+```bash
+curl -fsSL https://raw.githubusercontent.com/luoxufeiyan/scallop/master/scripts/install.sh | sudo bash
+```
+
+- 方式2：下载后执行
+
+```
 wget https://raw.githubusercontent.com/luoxufeiyan/scallop/master/scripts/install.sh
 chmod +x install.sh
 sudo ./install.sh
 ```
 
-安装完成后：
+安装完成后会产生下面文件：
 - 二进制文件：`/usr/local/bin/scallop`
 - 配置文件：`/etc/scallop/config.json`
-- 数据目录：`/var/lib/scallop/`
+- 数据目录：`/var/lib/scallop/ping_data.db`
+
+运行控制：
 - 服务管理：`systemctl start/stop/restart scallop`
 - 查看日志：`journalctl -u scallop -f`
+
+
+卸载：
+```bash
+curl -fsSL https://raw.githubusercontent.com/luoxufeiyan/scallop/master/scripts/uninstall.sh | sudo bash
+```
 
 ### 手动安装
 
@@ -193,20 +205,3 @@ GOOS=linux GOARCH=amd64 go build -o scallop-linux-amd64 cmd/scallop/main.go
 ```
 
 详细构建说明参考 [BUILD.md](docs/BUILD.md)
-
-## 常见问题
-
-**Q: 如何修改配置？**  
-A: 编辑配置文件后重启服务：`systemctl restart scallop`
-
-**Q: 如何查看日志？**  
-A: `journalctl -u scallop -f`
-
-**Q: 端口被占用？**  
-A: 修改配置文件中的 `web_port`
-
-**Q: 如何卸载？**  
-A: 
-```bash
-curl -fsSL https://raw.githubusercontent.com/luoxufeiyan/scallop/master/scripts/uninstall.sh | sudo bash
-```
